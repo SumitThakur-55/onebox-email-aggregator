@@ -76,11 +76,11 @@ const SignupPage: React.FC = () => {
 
                 {/* Google Sign Up */}
                 <button
-                    className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-lg border border-gray-600 hover:bg-gray-800 transition-colors"
+                    className="w-full flex items-center justify-center gap-2 py-2 px-4 border rounded-full border-gray-600 hover:bg-gray-800 transition-colors "
                     onClick={handleLogin}
                 >
                     <img
-                        src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Google_%22G%22_Logo.svg/512px-Google_%22G%22_Logo.svg.png"
+                        src="/google-logo.svg"
                         alt="Google Logo"
                         className="w-6 h-6"
                     />

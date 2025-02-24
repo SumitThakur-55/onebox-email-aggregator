@@ -4,7 +4,7 @@ const mongoose = require("mongoose");
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
 const authRouter = require("./routes/auth");
-
+const emailRouter = require("./routes/email");
 const app = express();
 app.use(express.json());
 app.use(cookieParser());
@@ -25,6 +25,6 @@ mongoose
 
 // Use Auth Routes
 app.use("/auth", authRouter);
-
+app.use("/email", emailRouter);
 // Start Server
 app.listen(5000, () => console.log("Server running on port 5000"));
