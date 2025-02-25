@@ -24,34 +24,19 @@ authRouter.post("/google-signup", async (req, res) => {
     const { email, firstName, lastName } = req.body;
 
     try {
-        // Find or create the user
-        let user = await UserModel.findOneAndUpdate(
-            { email }, // Search by email
-            {
-                $setOnInsert: { firstName, lastName, password: null } // Insert if new
-            },
-            { new: true, upsert: true } // Return updated or new doc
-        );
+        // Check if user already exists
+        let user = await UserModel.findOne({ email });
+        if (!user) {
+            user = await UserModel.create({
+                email,
+                firstName,
+                lastName,
+                password: null, // No password for Google users
+            });
+        }
 
-        // Generate JWT token
-        const token = jwt.sign(
-            { id: user._id, email: user.email },
-            process.env.JWT_SECRET,
-            { expiresIn: "1d" }
-        );
-
-        // Set token in cookie
-        res
-            .cookie("jwt", token, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === "production",
-                sameSite: "strict",
-                maxAge: 24 * 60 * 60 * 1000, // 1 day
-            })
-            .json({ message: "Logged in successfully", token });
-
+        res.status(200).json({ message: "User authenticated successfully", user });
     } catch (error) {
-        console.error("Google Auth Error:", error);
         res.status(500).json({ error: "Error authenticating Google user" });
     }
 });
