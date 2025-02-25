@@ -1,5 +1,6 @@
 import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
+import CredentialsProvider from "next-auth/providers/credentials";
 
 export const authOptions = {
     providers: [
@@ -7,31 +8,69 @@ export const authOptions = {
             clientId: process.env.GOOGLE_CLIENT_ID,
             clientSecret: process.env.GOOGLE_CLIENT_SECRET,
         }),
+        CredentialsProvider({
+            name: "Credentials",
+            credentials: {
+                email: { label: "Email", type: "email" },
+                password: { label: "Password", type: "password" }
+            },
+            async authorize(credentials) {
+                try {
+                    const res = await fetch("http://localhost:5000/auth/signin", {
+                        method: 'POST',
+                        body: JSON.stringify(credentials),
+                        headers: { "Content-Type": "application/json" }
+                    });
+                    const user = await res.json();
+
+                    if (res.ok && user) {
+                        return user;
+                    }
+                    return null;
+                } catch (error) {
+                    console.error("Auth error:", error);
+                    return null;
+                }
+            }
+        }),
     ],
-    debug: true,
+    pages: {
+        signIn: '/signin',
+        signUp: '/signup',
+    },
     callbacks: {
         async signIn({ account, profile }) {
             if (account.provider === "google") {
-                // Send Google user data to your backend
-                const res = await fetch("http://localhost:5000/auth/google-signup", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        email: profile.email,
-                        firstName: profile.given_name,
-                        lastName: profile.family_name,
-                    }),
-                });
-
-                if (!res.ok) {
-                    return false; // Stop sign-in if backend fails
+                try {
+                    const res = await fetch("http://localhost:5000/auth/google-signup", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            email: profile.email,
+                            firstName: profile.given_name,
+                            lastName: profile.family_name,
+                        }),
+                    });
+                    if (!res.ok) {
+                        throw new Error("Failed to register Google user");
+                    }
+                } catch (error) {
+                    console.error("Google signup error:", error);
+                    return false;
                 }
             }
             return true;
         },
+        async jwt({ token, user }) {
+            if (user) {
+                token.id = user.id;
+            }
+            return token;
+        },
         async session({ session, token }) {
-            // session.accessToken = token.accessToken
-            session.user.id = token.sub;
+            if (session.user) {
+                session.user.id = token.id;
+            }
             return session;
         },
     },

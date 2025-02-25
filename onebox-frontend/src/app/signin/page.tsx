@@ -1,12 +1,24 @@
 "use client"
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { signIn } from "next-auth/react";
+import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
+import React from 'react';
 
 function Page() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [passwordVisible, setPasswordVisible] = useState(false);
     const [loading, setLoading] = useState(false);
+    const router = useRouter();
+    const { data: session } = useSession();
+
+    // Redirect if already authenticated
+    useEffect(() => {
+        if (session) {
+            router.replace('/dashboard');
+        }
+    }, [session, router]);
 
     const handleLogin = async () => {
         const result = await signIn("google", { callbackUrl: "/dashboard" });
@@ -15,24 +27,25 @@ function Page() {
         }
     };
 
-    const handleManualLogin = async () => {
+    const handleManualLogin = async (e: React.FormEvent) => {
+        e.preventDefault();
         setLoading(true);
+
         try {
-            const response = await fetch("http://localhost:5000/auth/signin", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email, password }),
+            const result = await signIn('credentials', {
+                email,
+                password,
+                redirect: false,
             });
-            const data = await response.json();
-            if (response.ok) {
-                alert("Login Successful");
-                window.location.href = "/dashboard";
+
+            if (result?.error) {
+                alert(result.error);
             } else {
-                alert(data.message || "Login failed");
+                router.push('/dashboard');
             }
         } catch (error) {
-            console.error("Error during login:", error);
-            alert("Something went wrong");
+            console.error('Error during login:', error);
+            alert('Something went wrong');
         } finally {
             setLoading(false);
         }

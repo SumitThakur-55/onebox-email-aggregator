@@ -1,4 +1,6 @@
 import { google } from "googleapis";
+import { getServerSession } from "next-auth";
+import { authOptions } from "../../auth/[...nextauth]/route";
 
 const oauth2Client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
@@ -7,6 +9,18 @@ const oauth2Client = new google.auth.OAuth2(
 );
 
 export async function GET(req) {
+    // Get the user session
+    const session = await getServerSession(authOptions);
+
+    if (!session) {
+        return new Response(null, {
+            status: 307,
+            headers: {
+                Location: `/signin?error=Please sign in first`
+            }
+        });
+    }
+
     const searchParams = new URL(req.url).searchParams;
     const code = searchParams.get('code');
 
@@ -28,7 +42,7 @@ export async function GET(req) {
             return new Response(null, {
                 status: 307,
                 headers: {
-                    Location: `http://localhost:3000/error?message=Authentication+failed`
+                    Location: `/error?message=Authentication+failed`
                 }
             });
         }
@@ -46,12 +60,13 @@ export async function GET(req) {
             return new Response(null, {
                 status: 307,
                 headers: {
-                    Location: `http://localhost:3000/error?message=Failed+to+get+user+info`
+                    Location: `/error?message=Failed+to+get+user+info`
                 }
             });
         }
 
         const payload = {
+            userId: session.user.id, // Add user ID from session
             email: userData.email,
             accessToken: tokens.access_token,
             refreshToken: tokens.refresh_token,
@@ -61,50 +76,45 @@ export async function GET(req) {
 
         console.log("Sending payload to backend:", {
             ...payload,
+            userId: session.user.id,
             accessToken: "REDACTED",
             refreshToken: "REDACTED"
         });
 
-        // Send data to backend
+        // Send data to backend with authorization header
         const response = await fetch("http://localhost:5000/email/store-email-token", {
             method: "POST",
-            credentials: "include",
             headers: {
                 "Content-Type": "application/json",
+                "Authorization": `Bearer ${session.user.id}` // Add authorization header
             },
             body: JSON.stringify(payload),
         });
 
         if (!response.ok) {
-            const errorText = await response.text();
-            console.error("Failed to store token:", errorText);
+            const errorData = await response.json();
+            console.error("Failed to store token:", errorData);
             return new Response(null, {
                 status: 307,
                 headers: {
-                    Location: `http://localhost:3000/error?message=Failed+to+store+token`
+                    Location: `/error?message=${encodeURIComponent(errorData.message || 'Failed to store token')}`
                 }
             });
         }
 
-        // Fixed redirect with full URL
         return new Response(null, {
             status: 307,
             headers: {
-                Location: `http://localhost:3000/email`
+                Location: `/dashboard?success=Email+connected+successfully`
             }
         });
 
     } catch (error) {
-        console.error("OAuth Callback Error:", {
-            message: error.message,
-            stack: error.stack,
-            cause: error.cause
-        });
-
+        console.error("OAuth Callback Error:", error);
         return new Response(null, {
             status: 307,
             headers: {
-                Location: `http://localhost:3000/error?message=OAuth+failed`
+                Location: `/error?message=${encodeURIComponent(error.message || 'OAuth failed')}`
             }
         });
     }

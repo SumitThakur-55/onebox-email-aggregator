@@ -1,6 +1,8 @@
 "use client";
-import React, { useState, ChangeEvent, FormEvent } from "react";
+import React, { useState, ChangeEvent, FormEvent, useEffect } from "react";
 import { signIn } from "next-auth/react";
+import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 
 const SignupPage: React.FC = () => {
     const [passwordVisible, setPasswordVisible] = useState<boolean>(false);
@@ -16,6 +18,15 @@ const SignupPage: React.FC = () => {
         password: "",
     });
     const [loading, setLoading] = useState<boolean>(false);
+    const router = useRouter();
+    const { data: session } = useSession();
+
+    // Redirect if already authenticated
+    useEffect(() => {
+        if (session) {
+            router.replace('/dashboard');
+        }
+    }, [session, router]);
 
     // Handle Google Sign-In
     const handleLogin = async () => {
@@ -45,24 +56,20 @@ const SignupPage: React.FC = () => {
             const data = await response.json();
 
             if (response.ok) {
-                alert("Signup successful!");
-
-                // Immediately sign in the user after signup
-                const result = await signIn("credentials", {
+                // Sign in the user after successful signup
+                const result = await signIn('credentials', {
                     email: manualFormData.email,
                     password: manualFormData.password,
                     redirect: false,
                 });
 
-                if (result?.ok) {
-                    window.location.href = "/dashboard";
+                if (result?.error) {
+                    alert(result.error);
                 } else {
-                    console.error("Sign-in failed:", result?.error);
-                    alert("Auto login failed, please sign in manually.");
+                    router.push('/dashboard');
                 }
             } else {
-                console.error("Signup error:", data);
-                alert("Signup failed: " + JSON.stringify(data.error));
+                alert(data.message || "Signup failed");
             }
         } catch (error) {
             console.error("An error occurred during signup:", error);
