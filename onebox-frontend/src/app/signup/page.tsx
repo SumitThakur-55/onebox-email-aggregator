@@ -39,19 +39,29 @@ const SignupPage: React.FC = () => {
             const response = await fetch("http://localhost:5000/auth/signup", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    ...manualFormData,
-                }),
+                body: JSON.stringify(manualFormData),
             });
 
             const data = await response.json();
 
             if (response.ok) {
                 alert("Signup successful!");
-                window.location.href = "/dashboard";
+
+                // Immediately sign in the user after signup
+                const result = await signIn("credentials", {
+                    email: manualFormData.email,
+                    password: manualFormData.password,
+                    redirect: false,
+                });
+
+                if (result?.ok) {
+                    window.location.href = "/dashboard";
+                } else {
+                    console.error("Sign-in failed:", result?.error);
+                    alert("Auto login failed, please sign in manually.");
+                }
             } else {
                 console.error("Signup error:", data);
-                // Convert the error object to a string for display
                 alert("Signup failed: " + JSON.stringify(data.error));
             }
         } catch (error) {

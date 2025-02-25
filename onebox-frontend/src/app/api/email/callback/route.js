@@ -1,6 +1,5 @@
 import { google } from "googleapis";
-import { useSession } from "next-auth/react";
-import axios from "axios"
+
 const oauth2Client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
@@ -67,18 +66,14 @@ export async function GET(req) {
         });
 
         // Send data to backend
-        const response = await axios.post(
-            "http://localhost:5000/email/store-email-token",
-            payload, // Directly pass the payload as the request body
-            {
-                withCredentials: true, // Equivalent to `credentials: "include"`
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${session.accessToken}`,
-                },
-            }
-        );
-
+        const response = await fetch("http://localhost:5000/email/store-email-token", {
+            method: "POST",
+            credentials: "include",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(payload),
+        });
 
         if (!response.ok) {
             const errorText = await response.text();
